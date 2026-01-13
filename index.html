@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Linea del tiempo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        :root {
+            --azul-claro: #ff00ae;
+            --azul-fondo: #000000;
+            --verde: #39FF14;
+            --rojo: #FF3131;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(180deg, #251043 0%, #000000 100%);
+            color: white;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+
+        /* Título Flotante */
+        h1 {
+            color: var(--azul-claro);
+            font-size: 1.6rem;
+            text-align: center;
+            margin: 20px 0 10px 0;
+            animation: flotar 3s ease-in-out infinite;
+            text-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+        }
+
+        @keyframes flotar {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 30px;
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Contenedores de Fotos */
+        .seccion {
+            width: 95%;
+            max-width: 450px;
+        }
+
+        .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+            text-align: left;
+        }
+
+        #dropzone {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 5px;
+            border-radius: 15px;
+            border: 2px solid var(--azul-claro);
+            min-height: 80px;
+            margin-bottom: 25px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+        }
+
+        #pool-fotos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            min-height: 150px;
+        }
+
+        /* LAS FOTOS: El secreto para que no se corten */
+        .foto-card {
+            width: 72px; /* Ajustado para que 5 entren en casi cualquier celular */
+            height: 72px;
+            background-color: #000; /* Fondo negro para rellenar si la foto es vertical/horizontal */
+            border-radius: 10px;
+            border: 2px solid white;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            transition: all 0.3s ease;
+        }
+
+        .foto-card img {
+            width: 100%;
+            height: 100%;
+            /* Esto asegura que se vea TODA la foto sin zoom y sin estirarse */
+            object-fit: contain; 
+        }
+
+        /* Efectos de Acierto y Error */
+        .correct { 
+            border: 4px solid var(--verde) !important; 
+            box-shadow: 0 0 20px var(--verde) !important;
+        }
+        .wrong { 
+            border: 4px solid var(--rojo) !important; 
+            box-shadow: 0 0 20px var(--rojo) !important;
+        }
+
+        /* Botón de Acción */
+        .btn-ready {
+            margin-top: 30px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            background: var(--azul-claro);
+            color: var(--azul-fondo);
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 5px 20px rgba(144, 11, 189, 0.4);
+            cursor: pointer;
+        }
+
+        .btn-ready:active { transform: scale(0.95); }
+
+    </style>
+</head>
+<body>
+
+    <h1>¿Quién entró primero?</h1>
+    
+    <div class="info-panel">
+        <div>Nivel: <span id="n-actual">1</span>/10</div>
+        <div>Puntos: <span id="p-total">0</span></div>
+    </div>
+
+    <div class="seccion">
+        <div class="label"></div>
+        <div id="dropzone"></div>
+
+        <div class="label">Fotos para ordenar</div>
+        <div id="pool-fotos"></div>
+    </div>
+
+    <button class="btn-ready" id="btn-verificar" onclick="verificarNivel()">Listo, Verificar</button>
+
+    <script>
+        let nivelActual = 1;
+        let puntosTotales = 0;
+
+        // ESTRUCTURA DE NIVELES
+        const niveles = [
+            { t: "¿Quién entró primero al colegio?", f: ["Brisa.jpg", "Belu.jpg", "Nico.jpg", "Walter.jpg", "Sofi.jpg", "Toti.jpg"] },
+            { t: "Ordená de Mayor a Menor a estos profes", f: ["Pablo.jpg", "Romina.jpg", "Lujan.jfif", "Rodri.jpg", "Lucia.jpg"] },
+            { t: "¿Qué se creó primero?", f: ["face.png", "x.jpg", "Whasa.png", "Insta.png", "tt.png"] },
+            { t: "¿En que orden llegaron a la tele?", f: ["Losi.png", "bob.png", "Peppa.png", "mani.jpg", "Phiyfer.png"] },
+            { t: "¿Quién se llevó mas materias?", f: ["Belu.jpg", "Toti.jpg", "Walter.jpg", "Juanma.jpg", "Nico.jpg"] },
+            { t: "Ordenar de mas caro a menos caro", f: ["Tesla.jfif", "Rolex.jfif", "Hotel.jpg", "iphone.jfif", "Tv.jpg"] },
+            { t: "Ordená de mas bajo a mas alto", f: ["Alegria.jfif", "Gato.jfif", "Mickey.jfif", "Lisa.png", "Kevin.jfif"] },
+            { t: "Ordená de mas a menos seguidores en instagram", f: ["Carola.jpg", "Tomi.jpg", "naza.jpg", "Brisa.jpg", "Fran.jfif"] },
+            { t: "Ordenar de menos puntual a mas puntual", f: ["Belu.jpg", "Brisa.jpg", "Piro.jpg", "Toti.jpg", "nico.jpg"] },
+            { t: "Ordená de mas fantasma a menos fantasma", f: ["Benja.jpg", "Juanma.jpg", "Bau.jpg", "Lio.jpg", "Elias.jpg"] }
+        ];
+ 
+        const dropzone = document.getElementById('dropzone');
+        const pool = document.getElementById('pool-fotos');
+
+        new Sortable(dropzone, { group: 'juego', animation: 250 });
+        new Sortable(pool, { group: 'juego', animation: 250 });
+
+        function cargarNivel() {
+            if (nivelActual > 10) {
+                alert("¡Juego terminado! Puntos: " + puntosTotales);
+                location.reload();
+                return;
+            }
+
+            const data = niveles[nivelActual - 1];
+            document.querySelector('h1').innerText = data.t;
+            document.getElementById('n-actual').innerText = nivelActual;
+            document.getElementById('btn-verificar').style.display = "block";
+            
+            dropzone.innerHTML = "";
+            pool.innerHTML = "";
+
+            // Crear fotos y mezclarlas
+            let lista = data.f.map((src, i) => ({src, id: i + 1}));
+            lista.sort(() => Math.random() - 0.5);
+
+            lista.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'foto-card';
+                div.setAttribute('data-id', item.id);
+                div.innerHTML = `<img src="${item.src}">`;
+                pool.appendChild(div);
+            });
+        }
+
+        function verificarNivel() {
+            const fotos = Array.from(dropzone.children);
+            if (fotos.length < 5) return alert("¡Mueve las 5 fotos arriba!");
+
+            let aciertos = 0;
+            fotos.forEach((el, i) => {
+                if (parseInt(el.getAttribute('data-id')) === (i + 1)) {
+                    el.classList.add('correct');
+                    aciertos++;
+                } else {
+                    el.classList.add('wrong');
+                }
+            });
+
+            puntosTotales += aciertos;
+            document.getElementById('p-total').innerText = puntosTotales;
+            document.getElementById('btn-verificar').style.display = "none";
+
+            setTimeout(() => {
+                nivelActual++;
+                cargarNivel();
+            }, 2000);
+        }
+
+        cargarNivel();
+    </script>
+</body>
+</html>
